@@ -434,22 +434,16 @@ div.append(
 }
 
 
-/* BLOC 12 : CREATION D'UNE NOUVELLE COLONNE PV */
+/* BLOC 12 : CREATION ET VERIFICATION D'UN PV */
 
 document.getElementById("addPv").onclick = async () => {
 
   const input = document.getElementById("newPv");
   const pv = input.value.trim();
+  const button = document.getElementById("addPv");
 
   if (!validPV(pv)) {
     showStatus("Format incorrect. Exemple : PV-12.", true);
-    return;
-  }
-
-  const button = document.getElementById("addPv");
-
-  if (pvColumns.includes(pv)) {
-    showStatus("Cette colonne existe déjà.", true);
     return;
   }
 
@@ -457,8 +451,30 @@ document.getElementById("addPv").onclick = async () => {
 
   try {
 
-    // Création de la colonne PV
-    await grist.docApi.applyUserActions([
+    showStatus("Vérification de la table Grist...");
+
+    // Vérifier que la table existe
+    const tables = await grist.docApi.listTables();
+
+    if (!tables.includes(TABLE)) {
+      throw new Error("Table introuvable : " + TABLE);
+    }
+
+    // Récupérer les colonnes existantes
+    let columns = await getColumns();
+
+    // Vérifier si le PV existe déjà
+    if (columns.includes(pv)) {
+
+      showStatus("La colonne " + pv + " existe déjà.", true);
+      return;
+
+    }
+
+    // Création effective de la colonne
+    showStatus("Création de la colonne " + pv + "...");
+
+    const result = await grist.docApi.applyUserActions([
       [
         "AddColumn",
         TABLE,
@@ -470,27 +486,44 @@ document.getElementById("addPv").onclick = async () => {
       ]
     ]);
 
-    // Création de la colonne pièces jointes
-    await ensurePJColumn(pv);
+    // Vérifier à nouveau le schéma
+    columns = await getColumns();
 
-    // Actualisation depuis Grist
-    await loadPVs();
+    if (!columns.includes(pv)) {
 
-    // Sélection automatique du nouveau PV
+      throw new Error(
+        "Grist n'a pas confirmé la création de " + pv +
+        ". Résultat : " + JSON.stringify(result)
+      );
+
+    }
+
+    // Mettre à jour la liste des PV
+    pvColumns = columns
+      .filter(validPV)
+      .sort((a, b) =>
+        a.localeCompare(b, "fr", { numeric: true })
+      );
+
+    // Sélectionner automatiquement le nouveau PV
     selectedPVs.add(pv);
 
     input.value = "";
 
     renderPVs();
 
-    showStatus(pv + " : colonne créée avec succès !");
+    showStatus(
+      "Succès : la colonne " + pv + " existe maintenant dans Grist."
+    );
 
   } catch (error) {
 
     showStatus(
-      "Création impossible : " + error.message,
+      "ERREUR DE CREATION : " + error.message,
       true
     );
+
+    console.error("Diagnostic création PV :", error);
 
   } finally {
 
@@ -613,6 +646,23 @@ for (const pv of selectedPVs) {
       "L",
       ...attachmentIds
     ];
+
+  }
+
+}
+	  // VERIFICATION DES COLONNES AVANT ENREGISTREMENT
+
+const columnsBeforeSave = await getColumns();
+
+for (const pv of selectedPVs) {
+
+  if (!columnsBeforeSave.includes(pv)) {
+
+    throw new Error(
+      "La colonne " + pv +
+      " n'existe pas dans Grist. " +
+      "Utilise d'abord le bouton Ajouter un PV."
+    );
 
   }
 
