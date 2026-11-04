@@ -453,12 +453,12 @@ document.getElementById("addPv").onclick = async () => {
 
     showStatus("Vérification de la table Grist...");
 
-    // Vérifier que la table existe
-    const tables = await grist.docApi.listTables();
+    // Vérification de l'existence de la table
+const tables = await grist.docApi.listTables();
 
-    if (!tables.includes(TABLE)) {
-      throw new Error("Table introuvable : " + TABLE);
-    }
+if (!tables.includes(TABLE)) {
+  throw new Error("Table introuvable : " + TABLE);
+}
 
     // Récupérer les colonnes existantes
     let columns = await getColumns();
@@ -490,10 +490,7 @@ document.getElementById("addPv").onclick = async () => {
     columns = await getColumns();
 
     if (!columns.includes(pv)) {
-
-      throw new Error(
-        "Grist n'a pas confirmé la création de " + pv +
-        ". Résultat : " + JSON.stringify(result)
+      throw new Error("Grist n'a pas confirmé la création de " + pv +  ". Résultat : " + JSON.stringify(result)
       );
 
     }
