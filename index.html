@@ -1,1 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
 
+<head>
+<meta charset="UTF-8">
+
+//  Permet l'adaptation du formulaire aux écrans mobiles  
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+//  Bibliothèque officielle permettant la communication avec Grist  
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+
+<title>Consultation Cadre PV</title>
+
+<style>
+
+//  BLOC 1 : MISE EN FORME GENERALE DU FORMULAIRE Apparence générale de la page 
+	
+body {
+  font-family: Arial, sans-serif;
+  background: #f3f5f8;
+  padding: 20px;
+  color: #263445;
+}
+
+// Conteneur principal du formulaire  
+.container {
+  max-width: 700px;
+  margin: auto;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+}
+
+// Couleur des titres  
+h2 {
+  color: #245b87;
+}
+
+// Mise en forme des champs de saisie  
+input, textarea {
+  width: 100%;
+  padding: 11px;
+  margin: 7px 0 15px;
+  border: 1px solid #ccd4dd;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+// Apparence des boutons  
+button {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: #246b9b;
+  color: white;
+  cursor: pointer;
+}
+
+// Apparence des boutons pendant une opération  
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+// Encadré de chaque PV  
+.pv {
+  padding: 12px;
+  background: #f4f7fa;
+  margin: 10px 0;
+  border-radius: 7px;
+}
+
+// Espacement des zones de réponse  
+.pv textarea {
+  margin-bottom: 0;
+}
+
+// Zone d'affichage des messages  
+.status {
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+// BLOC 1 BIS : APPARENCE DU DEPOT DE PIECES JOINTES 
+
+.attachment-zone {
+  margin-top: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px dashed #8da9bf;
+  border-radius: 7px;
+}
+
+.attachment-zone label {
+  display: block;
+  font-weight: bold;
+  color: #245b87;
+}
+
+.attachment-zone input {
+  margin-bottom: 0;
+}
+
+.attachment-info {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Consultation Cadre PV</h2>
+
+//  BLOC 2 : FORMULAIRE D'IDENTIFICATION Ces informations seront enregistrées dans Grist. 
+
+<form id="form">
+
+<label>Nom</label>
+<input id="nom" required>
+
+<label>Prénom</label>
+<input id="prenom" required>
+
+<label>Structure</label>
+<input id="structure" required>
+
+<label>Adresse e-mail</label>
+<input id="mail" type="email" required>
+
+<hr>
+
+//  BLOC 3 : AFFICHAGE DES PV EXISTANTS Les cases seront générées automatiquement en JavaScript. 
+
+<h3>PV disponibles</h3>
+
+<div id="pvList">Connexion à Grist...</div>
+
+<hr>
+
+//  BLOC 4 : AJOUT D'UN NOUVEAU PV Le répondant peut saisir un nouvel identifiant PV. 
+
+<h3>Ajouter un nouveau PV</h3>
+
+<input
+  id="newPv"
+  placeholder="Exemple : PV-12"
+>
+
+<button type="button" id="addPv">
++ Ajouter un PV
+</button>
+
+<hr>
+
+//  BLOC 5 : VALIDATION DU FORMULAIRE Déclenche l'enregistrement des données dans Grist. 
+
+<button type="submit" id="submit">
+Envoyer ma réponse
+</button>
+
+//  Affichage des confirmations et des erreurs  
+<div id="status" class="status"></div>
+
+</form>
+</div>
+
+<script>
+
+//  BLOC 6 : CONFIGURATION GENERALE 
+
+// Identifiant technique de la table Grist à modifier
+const TABLE = "Tableau_Consultation_Cadre_PV";
+
+// Identifiants techniques des colonnes d'identification
+const COL_NOM = "Nom";
+const COL_PRENOM = "Prenom";
+const COL_STRUCTURE = "Structure";
+const COL_MAIL = "Mail";
+
+// Liste des colonnes PV trouvées dans Grist
+let pvColumns = [];
+
+// Liste des PV cochés par le répondant
+let selectedPVs = new Set();
+
+// Récupération de la zone de message
+const status = document.getElementById("status");
+
+
+//  BLOC 7 : AFFICHAGE DES MESSAGES 
+
+// Affiche un message de succès ou d'erreur
+function showStatus(message, error = false) {
+
+  status.textContent = message;
+
+  status.style.color = error
+    ? "#c0392b"
+    : "#247a45";
+
+}
+
+
+//  BLOC 8 : VERIFICATION DU FORMAT PV 
+
+// Vérifie que le nom saisi respecte le format PV-X
+// Exemples acceptés : PV-1, PV-12, PV-A
+function validPV(pv) {
+
+  return /^PV-[A-Za-z0-9_-]+$/.test(pv);
+
+}
+/* BLOC 8 BIS : GESTION DES COLONNES PIECES JOINTES */
+
+// Génère le nom de la colonne de pièces jointes
+function getPJColumn(pv) {
+  return "PJ_" + pv;
+}
+
+// Vérifie et crée la colonne de pièces jointes
+async function ensurePJColumn(pv) {
+
+  const columns = await getColumns();
+
+  const pjColumn = getPJColumn(pv);
+
+  if (!columns.includes(pjColumn)) {
+
+    await grist.docApi.applyUserActions([
+      [
+        "AddColumn",
+        TABLE,
+        pjColumn,
+        {
+          type: "Attachments",
+          label: "Pièces jointes " + pv
+        }
+      ]
+    ]);
+
+  }
+
+}
+
+// BLOC 9 : RECUPERATION DES COLONNES DE GRIST 
+
+// Interroge la table Grist pour récupérer ses colonnes
+async function getColumns() {
+
+  // Récupère les enregistrements de la table
+  const rows = await grist.docApi.fetchTable(TABLE);
+
+  // Si aucune ligne n'existe, cette méthode ne permet
+  // pas de connaître les colonnes : il faudra utiliser
+  // la récupération du schéma dans une version améliorée.
+  if (!rows.length) {
+    return [];
+  }
+
+  // Retourne les identifiants des colonnes
+  // en excluant la colonne technique "id"
+  return Object.keys(rows[0]).filter(
+    id => id !== "id"
+  );
+
+}
+
+
+// BLOC 10 : CHARGEMENT DES PV EXISTANTS 
+
+// Recherche toutes les colonnes PV déjà présentes
+async function loadPVs() {
+
+  try {
+
+    // Récupération de toutes les colonnes
+    const columns = await getColumns();
+
+    // Conservation uniquement des colonnes commençant par PV-
+    pvColumns = columns.filter(validPV).sort(
+      (a, b) => a.localeCompare(b, "fr", {
+        numeric: true
+      })
+    );
+
+    // Affichage des PV dans le formulaire
+    renderPVs();
+// Création des colonnes de pièces jointes pour chaque PV
+for (const pv of pvColumns) {
+
+  await ensurePJColumn(pv);
+
+}
+  } catch (error) {
+
+    showStatus(
+      "Impossible de lire la table Grist : " + error.message,
+      true
+    );
+
+  }
+
+}
+
+
+// BLOC 11 : CREATION DES CASES A COCHER 
+
+// Construit automatiquement l'interface des PV
+function renderPVs() {
+
+  const list = document.getElementById("pvList");
+
+  // Vide l'affichage précédent
+  list.replaceChildren();
+
+  // Message si aucun PV n'est disponible
+  if (!pvColumns.length) {
+
+    list.textContent =
+      "Aucun PV détecté. Tu peux en ajouter un ci-dessous.";
+
+  }
+
+  // Parcours de chaque colonne PV
+  pvColumns.forEach(pv => {
+
+    // Création du bloc graphique
+    const div = document.createElement("div");
+    div.className = "pv";
+
+    // Création du libellé
+    const label = document.createElement("label");
+
+    // Création de la case à cocher
+    const checkbox = document.createElement("input");
+
+    checkbox.type = "checkbox";
+    checkbox.style.width = "auto";
+
+    // Restaure l'état de sélection
+    checkbox.checked = selectedPVs.has(pv);
+
+    label.append(
+      checkbox,
+      document.createTextNode(" " + pv)
+    );
+
+    // Création du champ de réponse
+    const textarea = document.createElement("textarea");
+
+    textarea.placeholder = "Saisir votre réponse...";
+    textarea.hidden = !checkbox.checked;
+    textarea.dataset.pv = pv;
+
+    // Affiche ou masque la réponse selon la sélection
+    checkbox.addEventListener("change", () => {
+
+      if (checkbox.checked) {
+
+        selectedPVs.add(pv);
+
+      } else {
+
+        selectedPVs.delete(pv);
+
+      }
+
+      textarea.hidden = !checkbox.checked;
+
+    });
+
+    // Ajout des éléments dans le formulaire
+    /* BLOC 11 BIS : CHAMP DE DEPOT DES PIECES JOINTES */
+
+// Création de la zone de dépôt
+const attachmentZone = document.createElement("div");
+
+attachmentZone.className = "attachment-zone";
+attachmentZone.hidden = !checkbox.checked;
+
+// Libellé
+const attachmentLabel = document.createElement("label");
+
+attachmentLabel.textContent =
+  "Pièces jointes pour " + pv;
+
+// Champ de sélection des fichiers
+const attachmentInput = document.createElement("input");
+
+attachmentInput.type = "file";
+attachmentInput.multiple = true;
+
+attachmentInput.dataset.pv = pv;
+
+// Informations complémentaires
+const attachmentInfo = document.createElement("div");
+
+attachmentInfo.className = "attachment-info";
+
+attachmentInfo.textContent =
+  "Vous pouvez sélectionner plusieurs fichiers.";
+
+// Assemblage de la zone
+attachmentZone.append(
+  attachmentLabel,
+  attachmentInput,
+  attachmentInfo
+);
+
+// Affichage ou masquage de la zone selon la sélection
+checkbox.addEventListener("change", () => {
+
+  attachmentZone.hidden = !checkbox.checked;
+
+});
+
+// Ajout dans le bloc PV
+div.append(
+  label,
+  textarea,
+  attachmentZone
+);
+    list.appendChild(div);
+
+  });
+
+}
+
+
+//     BLOC 12 : CREATION D'UNE NOUVELLE COLONNE PV      
+
+// Action déclenchée lorsque le répondant clique
+// sur le bouton "Ajouter un PV"
+document.getElementById("addPv").onclick = async () => {
+
+  const input = document.getElementById("newPv");
+
+  // Récupération du nom saisi
+  const pv = input.value.trim();
+
+  // Vérification du format
+  if (!validPV(pv)) {
+
+    showStatus("Format incorrect. Exemple : PV-12.", true);
+    return;
+
+  }
+
+  // Vérification des doublons
+  if (pvColumns.includes(pv)) {
+
+    showStatus("Cette colonne existe déjà.", true);
+    return;
+
+  }
+
+  const button = document.getElementById("addPv");
+  button.disabled = true;
+
+  try {
+
+    // Demande à Grist de créer une nouvelle colonne
+    // Le type de données est défini sur Texte
+    await grist.docApi.applyUserActions([
+
+      [
+        "AddColumn",
+        TABLE,
+        pv,
+        {
+          type: "Text",
+          label: pv
+        }
+      ]
+
+    ]);
+// Création de la colonne de pièces jointes associée
+	await ensurePJColumn(pv);
+	
+    // Ajout du nouveau PV à la liste locale
+    pvColumns.push(pv);
+
+    // Classement numérique des PV
+    pvColumns.sort((a, b) =>
+      a.localeCompare(b, "fr", {numeric:true})
+    );
+
+    // Coche automatiquement le nouveau PV
+    selectedPVs.add(pv);
+
+    // Efface le champ de saisie
+    input.value = "";
+
+    // Actualise le formulaire
+    renderPVs();
+
+    showStatus(pv + " : nouvelle colonne créée !");
+
+  } catch (error) {
+
+    showStatus(
+      "Création impossible : " + error.message,
+      true
+    );
+
+  } finally {
+
+    // Réactive le bouton
+    button.disabled = false;
+
+  }
+
+};
+
+/* BLOC 12 BIS : TELEVERSEMENT DES FICHIERS DANS GRIST */
+
+// Envoie les fichiers vers le stockage des pièces jointes Grist
+async function uploadAttachments(files) {
+
+  if (!files.length) {
+    return [];
+  }
+
+  // Récupération du jeton d'accès Grist
+  const tokenInfo = await grist.docApi.getAccessToken();
+
+  // Préparation des fichiers
+  const formData = new FormData();
+
+  files.forEach(file => {
+    formData.append("upload", file);
+  });
+
+  // Téléversement des fichiers
+  const response = await fetch(
+    tokenInfo.baseUrl + "/attachments?auth=" +
+    encodeURIComponent(tokenInfo.token),
+    {
+      method: "POST",
+      body: formData
+    }
+  );
+
+  if (!response.ok) {
+
+    throw new Error(
+      "Erreur de téléversement des pièces jointes."
+    );
+
+  }
+
+  return await response.json();
+
+}
+
+//     BLOC 13 : ENREGISTREMENT DES REPONSES      
+
+// Action déclenchée à la validation du formulaire
+document.getElementById("form").onsubmit = async event => {
+
+  // Empêche le rechargement de la page
+  event.preventDefault();
+
+  // Vérifie qu'au moins un PV est sélectionné
+  if (!selectedPVs.size) {
+
+    showStatus("Sélectionne au moins un PV.", true);
+    return;
+
+  }
+
+  const button = document.getElementById("submit");
+  button.disabled = true;
+
+  try {
+
+    // Préparation des informations du répondant
+    const fields = {
+
+      [COL_NOM]:
+        document.getElementById("nom").value.trim(),
+
+      [COL_PRENOM]:
+        document.getElementById("prenom").value.trim(),
+
+      [COL_STRUCTURE]:
+        document.getElementById("structure").value.trim(),
+
+      [COL_MAIL]:
+        document.getElementById("mail").value.trim()
+
+    };
+
+    // Parcours des champs PV
+    document.querySelectorAll("#pvList textarea")
+      .forEach(area => {
+
+        // Ne conserve que les PV sélectionnés
+        if (selectedPVs.has(area.dataset.pv)) {
+
+          // Associe la réponse à sa colonne
+          fields[area.dataset.pv] = area.value;
+
+        }
+
+      });
+/* BLOC 13 BIS : ENREGISTREMENT DES PIECES JOINTES */
+
+// Parcours des PV sélectionnés
+for (const pv of selectedPVs) {
+
+  // Récupération du champ de fichiers correspondant
+  const fileInput = document.querySelector(
+    'input[type="file"][data-pv="' + pv + '"]'
+  );
+
+  if (fileInput && fileInput.files.length) {
+
+    // Téléversement des fichiers
+    const attachmentIds = await uploadAttachments(
+      Array.from(fileInput.files)
+    );
+
+    // Association des fichiers à la colonne PJ du PV
+    fields[getPJColumn(pv)] = [
+      "L",
+      ...attachmentIds
+    ];
+
+  }
+
+}
+    // Création d'une nouvelle ligne dans Grist
+    await grist.docApi.applyUserActions([
+
+      [
+        "AddRecord",
+        TABLE,
+        null,
+        fields
+      ]
+
+    ]);
+
+    // Confirmation de l'enregistrement
+    showStatus("Votre réponse a bien été enregistrée !");
+
+    // Réinitialisation du formulaire
+    event.target.reset();
+
+    // Suppression des sélections
+    selectedPVs.clear();
+
+    // Réaffichage des PV
+    renderPVs();
+
+  } catch (error) {
+
+    showStatus(
+      "Erreur lors de l'enregistrement : " + error.message,
+      true
+    );
+
+  } finally {
+
+    button.disabled = false;
+
+  }
+
+};
+
+
+//     BLOC 14 : INITIALISATION DU WIDGET GRIST      
+
+// Déclare le widget auprès de Grist
+// L'accès complet est nécessaire pour créer des colonnes
+grist.ready({
+
+  requiredAccess: "full"
+
+});
+
+// Chargement initial des PV
+loadPVs();
+
+</script>
+</body>
+</html>
