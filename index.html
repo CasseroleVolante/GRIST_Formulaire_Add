@@ -247,10 +247,14 @@ async function ensurePJColumn(pv) {
 }
 /* BLOC 9 : RECUPERATION DES COLONNES GRIST */
 
-// Fonction compatible avec une table vide
 async function getColumns() {
 
-  // Récupération de la liste des tables
+  // Récupération des colonnes techniques de Grist
+  const columns = await grist.docApi.fetchTable(
+    "_grist_Tables_column"
+  );
+
+  // Récupération des tables techniques
   const tables = await grist.docApi.fetchTable(
     "_grist_Tables"
   );
@@ -266,12 +270,7 @@ async function getColumns() {
     );
   }
 
-  // Récupération des colonnes techniques
-  const columns = await grist.docApi.fetchTable(
-    "_grist_Tables_column"
-  );
-
-  // Identification des colonnes appartenant à notre table
+  // Récupération des identifiants de colonnes
   return columns
     .filter(col => col.parentId === tableInfo.id)
     .map(col => col.colId)
@@ -443,7 +442,7 @@ document.getElementById("addPv").onclick = async () => {
   const button = document.getElementById("addPv");
 
   if (!validPV(pv)) {
-    showStatus("Format incorrect. Exemple : PV-12.", true);
+    showStatus("Format incorrect. Exemple : PV-Numéro.", true);
     return;
   }
 
