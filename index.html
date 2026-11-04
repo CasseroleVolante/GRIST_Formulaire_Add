@@ -247,22 +247,16 @@ async function ensurePJColumn(pv) {
 }
 
 // BLOC 9 : RECUPERATION DES COLONNES DE GRIST 
+/* RECUPERATION DES COLONNES GRIST */
 
-// Interroge la table Grist pour récupérer ses colonnes
 async function getColumns() {
 
-  // Récupère les enregistrements de la table
   const rows = await grist.docApi.fetchTable(TABLE);
 
-  // Si aucune ligne n'existe, cette méthode ne permet
-  // pas de connaître les colonnes : il faudra utiliser
-  // la récupération du schéma dans une version améliorée.
   if (!rows.length) {
     return [];
   }
 
-  // Retourne les identifiants des colonnes
-  // en excluant la colonne technique "id"
   return Object.keys(rows[0]).filter(
     id => id !== "id"
   );
