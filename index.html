@@ -245,54 +245,63 @@ async function ensurePJColumn(pv) {
   }
 
 }
+/* BLOC 9 : RECUPERATION DES COLONNES GRIST */
 
-// BLOC 9 : RECUPERATION DES COLONNES DE GRIST 
-/* RECUPERATION DES COLONNES GRIST */
-
+// Fonction compatible avec une table vide
 async function getColumns() {
 
-  const rows = await grist.docApi.fetchTable(TABLE);
+  // Récupération de la liste des tables
+  const tables = await grist.docApi.fetchTable(
+    "_grist_Tables"
+  );
 
-  if (!rows.length) {
-    return [];
+  // Recherche de notre table principale
+  const tableInfo = tables.find(
+    row => row.tableId === TABLE
+  );
+
+  if (!tableInfo) {
+    throw new Error(
+      "Table introuvable : " + TABLE
+    );
   }
 
-  return Object.keys(rows[0]).filter(
-    id => id !== "id"
+  // Récupération des colonnes techniques
+  const columns = await grist.docApi.fetchTable(
+    "_grist_Tables_column"
   );
+
+  // Identification des colonnes appartenant à notre table
+  return columns
+    .filter(col => col.parentId === tableInfo.id)
+    .map(col => col.colId)
+    .filter(col => col !== "id");
 
 }
 
+/* BLOC 10 : CHARGEMENT DES PV EXISTANTS */
 
-// BLOC 10 : CHARGEMENT DES PV EXISTANTS 
-
-// Recherche toutes les colonnes PV déjà présentes
 async function loadPVs() {
 
   try {
 
-    // Récupération de toutes les colonnes
     const columns = await getColumns();
 
-    // Conservation uniquement des colonnes commençant par PV-
-    pvColumns = columns.filter(validPV).sort(
-      (a, b) => a.localeCompare(b, "fr", {
-        numeric: true
-      })
-    );
+    pvColumns = columns
+      .filter(validPV)
+      .sort((a, b) =>
+        a.localeCompare(b, "fr", {
+          numeric: true
+        })
+      );
 
-    // Affichage des PV dans le formulaire
+    // Affichage des PV
     renderPVs();
-// Création des colonnes de pièces jointes pour chaque PV
-for (const pv of pvColumns) {
 
-  await ensurePJColumn(pv);
-
-}
   } catch (error) {
 
     showStatus(
-      "Impossible de lire la table Grist : " + error.message,
+      "Erreur de lecture Grist : " + error.message,
       true
     );
 
