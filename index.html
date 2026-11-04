@@ -431,42 +431,31 @@ div.append(
 }
 
 
-//     BLOC 12 : CREATION D'UNE NOUVELLE COLONNE PV      
+/* BLOC 12 : CREATION D'UNE NOUVELLE COLONNE PV */
 
-// Action déclenchée lorsque le répondant clique
-// sur le bouton "Ajouter un PV"
 document.getElementById("addPv").onclick = async () => {
 
   const input = document.getElementById("newPv");
-
-  // Récupération du nom saisi
   const pv = input.value.trim();
 
-  // Vérification du format
   if (!validPV(pv)) {
-
     showStatus("Format incorrect. Exemple : PV-12.", true);
     return;
-
-  }
-
-  // Vérification des doublons
-  if (pvColumns.includes(pv)) {
-
-    showStatus("Cette colonne existe déjà.", true);
-    return;
-
   }
 
   const button = document.getElementById("addPv");
+
+  if (pvColumns.includes(pv)) {
+    showStatus("Cette colonne existe déjà.", true);
+    return;
+  }
+
   button.disabled = true;
 
   try {
 
-    // Demande à Grist de créer une nouvelle colonne
-    // Le type de données est défini sur Texte
+    // Création de la colonne PV
     await grist.docApi.applyUserActions([
-
       [
         "AddColumn",
         TABLE,
@@ -476,29 +465,22 @@ document.getElementById("addPv").onclick = async () => {
           label: pv
         }
       ]
-
     ]);
-// Création de la colonne de pièces jointes associée
-	await ensurePJColumn(pv);
-	
-    // Ajout du nouveau PV à la liste locale
-    pvColumns.push(pv);
 
-    // Classement numérique des PV
-    pvColumns.sort((a, b) =>
-      a.localeCompare(b, "fr", {numeric:true})
-    );
+    // Création de la colonne pièces jointes
+    await ensurePJColumn(pv);
 
-    // Coche automatiquement le nouveau PV
+    // Actualisation depuis Grist
+    await loadPVs();
+
+    // Sélection automatique du nouveau PV
     selectedPVs.add(pv);
 
-    // Efface le champ de saisie
     input.value = "";
 
-    // Actualise le formulaire
     renderPVs();
 
-    showStatus(pv + " : nouvelle colonne créée !");
+    showStatus(pv + " : colonne créée avec succès !");
 
   } catch (error) {
 
@@ -509,13 +491,11 @@ document.getElementById("addPv").onclick = async () => {
 
   } finally {
 
-    // Réactive le bouton
     button.disabled = false;
 
   }
 
 };
-
 /* BLOC 12 BIS : TELEVERSEMENT DES FICHIERS DANS GRIST */
 
 // Envoie les fichiers vers le stockage des pièces jointes Grist
