@@ -170,7 +170,7 @@ Envoyer ma réponse
 
 <script>
 
-//  BLOC 6 : CONFIGURATION GENERALE 
+// BLOC 6 : CONFIGURATION GENERALE 
 
 // Identifiant technique de la table Grist à modifier
 const TABLE = "Tableau_Consultation_Cadre_PV";
@@ -674,19 +674,20 @@ for (const pv of selectedPVs) {
 };
 
 
-//     BLOC 14 : INITIALISATION DU WIDGET GRIST      
+/* BLOC 14 : INITIALISATION DU WIDGET GRIST */
 
-// Déclare le widget auprès de Grist
-// L'accès complet est nécessaire pour créer des colonnes
-grist.ready({
+if (typeof grist === "undefined") {
+  showStatus("API Grist introuvable.", true);
+} else {
+  // Demande les droits complets
+  grist.ready({
+    requiredAccess: "full"
+  });
+  showStatus("Connexion à Grist en cours...");
+  // Chargement des colonnes PV
+  loadPVs();
 
-  requiredAccess: "full"
-
-});
-
-// Chargement initial des PV
-loadPVs();
-
+}
 </script>
 </body>
 </html>
