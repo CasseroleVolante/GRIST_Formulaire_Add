@@ -245,38 +245,61 @@ async function ensurePJColumn(pv) {
   }
 
 }
+
 /* BLOC 9 : RECUPERATION DES COLONNES GRIST */
 
+// Fonction de conversion des données Grist
+function getColumnValues(data, columnName) {
+
+  // Format tableau d'enregistrements
+  if (Array.isArray(data)) {
+    return data.map(row => row[columnName]);
+  }
+
+  // Format objet contenant des tableaux
+  if (data && Array.isArray(data[columnName])) {
+    return data[columnName];
+  }
+
+  throw new Error(
+    "Format Grist inattendu pour la colonne " + columnName
+  );
+}
+
+// Récupération des colonnes, même si la table est vide
 async function getColumns() {
 
-  // Récupération des colonnes techniques de Grist
-  const columns = await grist.docApi.fetchTable(
+  // Lecture des tables techniques
+  const tablesData = await grist.docApi.fetchTable("_grist_Tables");
+
+  const tableIds = getColumnValues(tablesData, "tableId");
+  const tableRowIds = getColumnValues(tablesData, "id");
+
+  // Recherche de la table principale sans utiliser find()
+  const tableIndex = tableIds.indexOf(TABLE);
+
+  if (tableIndex === -1) {
+    throw new Error("Table introuvable : " + TABLE);
+  }
+
+  const tableInternalId = tableRowIds[tableIndex];
+
+  // Lecture des colonnes techniques
+  const columnsData = await grist.docApi.fetchTable(
     "_grist_Tables_column"
   );
 
-  // Récupération des tables techniques
-  const tables = await grist.docApi.fetchTable(
-    "_grist_Tables"
-  );
+  const parentIds = getColumnValues(columnsData, "parentId");
+  const columnIds = getColumnValues(columnsData, "colId");
 
-  // Recherche de notre table principale
-  const tableInfo = tables.find(
-    row => row.tableId === TABLE
-  );
-
-  if (!tableInfo) {
-    throw new Error(
-      "Table introuvable : " + TABLE
-    );
-  }
-
-  // Récupération des identifiants de colonnes
-  return columns
-    .filter(col => col.parentId === tableInfo.id)
-    .map(col => col.colId)
-    .filter(col => col !== "id");
+  // Retour des identifiants des colonnes de notre table
+  return columnIds.filter((colId, index) => {
+    return parentIds[index] === tableInternalId &&
+           colId !== "id";
+  });
 
 }
+
 
 /* BLOC 10 : CHARGEMENT DES PV EXISTANTS */
 
