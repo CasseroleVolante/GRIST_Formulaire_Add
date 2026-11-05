@@ -769,6 +769,10 @@ async function diagnosticGristViews() {
 
 }
 
+	// Lancement automatique du diagnostic
+setTimeout(() => {
+  diagnosticGristViews();
+}, 3000);
 /* BLOC 14 : INITIALISATION DU WIDGET GRIST */
 
 if (typeof grist === "undefined") {
