@@ -367,25 +367,48 @@ async function organizePVAttachmentFields() {
 
     });
 
-    // Construire le nouvel ordre
-    const desiredFields = [];
-    const added = new Set();
+// Construire le nouvel ordre
+const desiredFields = [];
+const added = new Set();
 
-    for (const pvField of pvFields) {
+// Colonnes d'identification à conserver au début
+const identificationColumns = [
+  "Nom",
+  "Prenom",
+  "Structure",
+  "Mail"
+];
 
-      desiredFields.push(pvField);
-      added.add(pvField.id);
+// Ajouter les colonnes d'identification dans l'ordre souhaité
+for (const colId of identificationColumns) {
 
-      const pjField = fieldByColumn.get(
-        "PJ_" + pvField.colId
-      );
+  const field = fieldByColumn.get(colId);
 
-      if (pjField) {
-        desiredFields.push(pjField);
-        added.add(pjField.id);
-      }
+  if (field) {
+    desiredFields.push(field);
+    added.add(field.id);
+  }
 
-    }
+}
+
+// Ajouter ensuite les PV et leurs pièces jointes
+for (const pvField of pvFields) {
+
+  if (added.has(pvField.id)) continue;
+
+  desiredFields.push(pvField);
+  added.add(pvField.id);
+
+  const pjField = fieldByColumn.get(
+    "PJ_" + pvField.colId
+  );
+
+  if (pjField) {
+    desiredFields.push(pjField);
+    added.add(pjField.id);
+  }
+
+}
 
     // Conserver les autres champs dans leur ordre initial
     currentFields.forEach(field => {
