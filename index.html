@@ -651,6 +651,9 @@ for (const pv of selectedPVs) {
 
   if (fileInput && fileInput.files.length) {
 
+    // Vérifier et créer la colonne PJ si nécessaire
+    await ensurePJColumn(pv);
+
     // Téléversement des fichiers
     const attachmentIds = await uploadAttachments(
       Array.from(fileInput.files)
