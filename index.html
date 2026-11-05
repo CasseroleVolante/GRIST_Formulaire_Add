@@ -184,6 +184,9 @@ const COL_MAIL = "Mail";
 // Liste des colonnes PV trouvées dans Grist
 let pvColumns = [];
 
+// Correspondance entre les noms PV et les identifiants Grist
+let pvColumnMap = {};
+
 // Liste des PV cochés par le répondant
 let selectedPVs = new Set();
 
@@ -511,11 +514,21 @@ if (!tables.includes(TABLE)) {
     // Vérifier à nouveau le schéma
     columns = await getColumns();
 
-    if (!columns.includes(pv)) {
-      throw new Error("Grist n'a pas confirmé la création de " + pv +  ". Résultat : " + JSON.stringify(result)
-      );
+    // Récupération du véritable identifiant technique créé par Grist
+const createdColumn = result.retValues[0].colId;
 
-    }
+// Vérification de la création
+const updatedColumns = await getColumns();
+
+if (!updatedColumns.includes(createdColumn)) {
+  throw new Error(
+    "La colonne technique " + createdColumn +
+    " est introuvable."
+  );
+}
+
+// Association entre le nom affiché et l'identifiant technique
+pvColumnMap[pv] = createdColumn;
 
     // Mettre à jour la liste des PV
     pvColumns = columns
@@ -638,7 +651,13 @@ document.getElementById("form").onsubmit = async event => {
         if (selectedPVs.has(area.dataset.pv)) {
 
           // Associe la réponse à sa colonne
-          fields[area.dataset.pv] = area.value;
+          const columnId = pvColumnMap[area.dataset.pv];
+
+			if (!columnId) {
+  			throw new Error("Identifiant Grist introuvable pour " + area.dataset.pv);
+}
+
+fields[columnId] = area.value;
 
         }
 
