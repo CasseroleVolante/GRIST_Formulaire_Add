@@ -787,7 +787,7 @@ setTimeout(() => {
   diagnosticGristViews();
 }, 3000);
 
-	/* BLOC TEMPORAIRE : DIAGNOSTIC DES VUES GRIST */
+	/* DIAGNOSTIC COMPLET DES VUES GRIST */
 
 document.getElementById("diagnosticBtn").onclick = async () => {
 
@@ -795,41 +795,43 @@ document.getElementById("diagnosticBtn").onclick = async () => {
   const output = document.getElementById("diagnosticResult");
 
   button.disabled = true;
-  output.value = "Analyse des vues Grist en cours...";
+  output.value = "Analyse complète en cours...";
 
   try {
 
-    // Récupération des sections
     const sections = await grist.docApi.fetchTable(
       "_grist_Views_section"
     );
 
-    // Récupération des champs des vues
     const fields = await grist.docApi.fetchTable(
       "_grist_Views_section_field"
     );
 
-    // Récupération des colonnes de la table
-    const columns = await getPVColumns();
+    const columns = await grist.docApi.fetchTable(
+      "_grist_Tables_column"
+    );
 
-    // Préparation des résultats
+    const views = await grist.docApi.fetchTable(
+      "_grist_Views"
+    );
+
+    const tables = await grist.docApi.fetchTable(
+      "_grist_Tables"
+    );
+
     const result = {
       table: TABLE,
 
-      sections: {
-        id: sections.id,
-        tableRef: sections.tableRef,
-        parentKey: sections.parentKey
-      },
+      views: views,
 
-      fields: {
-        id: fields.id,
-        parentId: fields.parentId,
-        colRef: fields.colRef,
-        parentPos: fields.parentPos
-      },
+      sections: sections,
 
-      columns: columns
+      fields: fields,
+
+      columns: columns,
+
+      tables: tables
+
     };
 
     output.value = JSON.stringify(
@@ -838,7 +840,7 @@ document.getElementById("diagnosticBtn").onclick = async () => {
       2
     );
 
-    showStatus("Diagnostic terminé.");
+    showStatus("Diagnostic complet terminé.");
 
   } catch (error) {
 
