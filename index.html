@@ -221,7 +221,7 @@ function validPV(pv) {
 
 // Génère le nom de la colonne de pièces jointes
 function getPJColumn(pv) {
-  return "PJ_" + pv;
+  return "PJ_" + pv.replace(/-/g, "_");
 }
 
 // Vérifie et crée la colonne de pièces jointes
@@ -444,7 +444,7 @@ document.getElementById("addPv").onclick = async () => {
   const button = document.getElementById("addPv");
 
   if (!validPV(pv)) {
-    showStatus("Format incorrect. Exemple : PV-Numéro.", true);
+    showStatus("Format incorrect. Exemple : PV-12.", true);
     return;
   }
 
@@ -455,31 +455,44 @@ document.getElementById("addPv").onclick = async () => {
     showStatus("Vérification de la table Grist...");
 
     // Vérification de l'existence de la table
-const tables = await grist.docApi.listTables();
+    const tables = await grist.docApi.listTables();
 
-if (!tables.includes(TABLE)) {
-  throw new Error("Table introuvable : " + TABLE);
-}
+    if (!tables.includes(TABLE)) {
+      throw new Error("Table introuvable : " + TABLE);
+    }
 
-    // Récupérer les colonnes existantes
-    let columns = await getColumns();
+    // Récupération des colonnes avec leurs libellés
+    const existingColumns = await getPVColumns();
 
-    // Vérifier si le PV existe déjà
-    if (columns.includes(pv)) {
+    // Vérification du libellé du PV
+    if (existingColumns.some(col => col.label === pv)) {
 
-      showStatus("La colonne " + pv + " existe déjà.", true);
+      showStatus("Le PV " + pv + " existe déjà.", true);
       return;
 
     }
 
-    // Création effective de la colonne
+    // Conversion du nom PV en identifiant technique Grist
+    const columnId = pv.replace(/-/g, "_");
+
+    // Vérification de l'identifiant technique
+    const columnIds = await getColumns();
+
+    if (columnIds.includes(columnId)) {
+      throw new Error(
+        "L'identifiant technique " + columnId +
+        " existe déjà dans Grist."
+      );
+    }
+
+    // Création de la colonne
     showStatus("Création de la colonne " + pv + "...");
 
-    const result = await grist.docApi.applyUserActions([
+    await grist.docApi.applyUserActions([
       [
         "AddColumn",
         TABLE,
-        pv,
+        columnId,
         {
           type: "Text",
           label: pv
@@ -487,44 +500,18 @@ if (!tables.includes(TABLE)) {
       ]
     ]);
 
-    // Vérifier à nouveau le schéma
-    columns = await getColumns();
-
-    // Récupération du véritable identifiant technique créé par Grist
-const createdColumn = result.retValues[0].colId;
-	  
-// Conserver le nom affiché et l'identifiant technique
-pvColumnMap[pv] = createdColumn;
-	  
-// Vérification de la création
-const updatedColumns = await getColumns();
-
-if (!updatedColumns.includes(createdColumn)) {
-  throw new Error(
-    "La colonne technique " + createdColumn +
-    " est introuvable."
-  );
-}
-
-// Association entre le nom affiché et l'identifiant technique
-pvColumnMap[pv] = createdColumn;
-
-    // Mettre à jour la liste des PV
-    pvColumns = columns
-      .filter(validPV)
-      .sort((a, b) =>
-        a.localeCompare(b, "fr", { numeric: true })
-      );
-
-    // Sélectionner automatiquement le nouveau PV
+    // Sélection automatique du nouveau PV
     selectedPVs.add(pv);
 
+    // Actualisation complète des colonnes depuis Grist
+    await loadPVs();
+
+    // Nettoyage du champ de saisie
     input.value = "";
 
-    renderPVs();
-
     showStatus(
-      "Succès : la colonne " + pv + " existe maintenant dans Grist."
+      "Succès : le PV " + pv +
+      " a été créé et ajouté à la liste."
     );
 
   } catch (error) {
@@ -669,16 +656,15 @@ for (const pv of selectedPVs) {
 }
 	  // VERIFICATION DES COLONNES AVANT ENREGISTREMENT
 
-const columnsBeforeSave = await getColumns();
+const columnsBeforeSave = await getPVColumns();
 
 for (const pv of selectedPVs) {
 
-  if (!columnsBeforeSave.includes(pv)) {
+  if (!columnsBeforeSave.some(col => col.label === pv)) {
 
     throw new Error(
       "La colonne " + pv +
-      " n'existe pas dans Grist. " +
-      "Utilise d'abord le bouton Ajouter un PV."
+      " n'existe pas dans Grist."
     );
 
   }
