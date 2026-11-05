@@ -727,6 +727,47 @@ for (const pv of selectedPVs) {
 
 };
 
+	/* DIAGNOSTIC DES VUES GRIST */
+
+async function diagnosticGristViews() {
+
+  try {
+
+    const sections = await grist.docApi.fetchTable(
+      "_grist_Views_section"
+    );
+
+    const fields = await grist.docApi.fetchTable(
+      "_grist_Views_section_field"
+    );
+
+    console.log("SECTIONS GRIST :", sections);
+    console.log("CHAMPS DES VUES :", fields);
+
+    console.table(
+      sections.id.map((id, i) => ({
+        id: id,
+        tableRef: sections.tableRef[i],
+        parentKey: sections.parentKey[i]
+      }))
+    );
+
+    console.table(
+      fields.id.map((id, i) => ({
+        id: id,
+        parentId: fields.parentId[i],
+        colRef: fields.colRef[i],
+        parentPos: fields.parentPos[i]
+      }))
+    );
+
+  } catch (error) {
+
+    console.error("Erreur diagnostic Grist :", error);
+
+  }
+
+}
 
 /* BLOC 14 : INITIALISATION DU WIDGET GRIST */
 
@@ -743,39 +784,7 @@ if (typeof grist === "undefined") {
 
 }
 
-	/* DIAGNOSTIC DES VUES GRIST */
 
-async function diagnosticGristViews() {
-
-  const sections = await grist.docApi.fetchTable(
-    "_grist_Views_section"
-  );
-
-  const fields = await grist.docApi.fetchTable(
-    "_grist_Views_section_field"
-  );
-
-  console.log("SECTIONS GRIST :", sections);
-  console.log("CHAMPS DES VUES :", fields);
-
-  console.table(
-    sections.id.map((id, i) => ({
-      id: id,
-      tableRef: sections.tableRef[i],
-      parentKey: sections.parentKey[i]
-    }))
-  );
-
-  console.table(
-    fields.id.map((id, i) => ({
-      id: id,
-      parentId: fields.parentId[i],
-      colRef: fields.colRef[i],
-      parentPos: fields.parentPos[i]
-    }))
-  );
-
-}
 </script>
 </body>
 </html>
