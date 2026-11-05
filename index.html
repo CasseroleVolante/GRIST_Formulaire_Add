@@ -532,15 +532,16 @@ document.getElementById("addPv").onclick = async () => {
 };
 /* BLOC 12 BIS : TELEVERSEMENT DES FICHIERS DANS GRIST */
 
-// Envoie les fichiers vers le stockage des pièces jointes Grist
 async function uploadAttachments(files) {
 
   if (!files.length) {
     return [];
   }
 
-  // Récupération du jeton d'accès Grist
-  const tokenInfo = await grist.docApi.getAccessToken();
+  // Récupération du jeton avec autorisation d'écriture
+  const tokenInfo = await grist.docApi.getAccessToken({
+    readOnly: false
+  });
 
   // Préparation des fichiers
   const formData = new FormData();
@@ -549,25 +550,35 @@ async function uploadAttachments(files) {
     formData.append("upload", file);
   });
 
-  // Téléversement des fichiers
+  // Téléversement vers Grist
   const response = await fetch(
     tokenInfo.baseUrl + "/attachments?auth=" +
     encodeURIComponent(tokenInfo.token),
     {
       method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest"
+      },
       body: formData
     }
   );
 
   if (!response.ok) {
-
     throw new Error(
-      "Erreur de téléversement des pièces jointes."
+      "Erreur de téléversement des pièces jointes : " +
+      response.status
     );
-
   }
 
-  return await response.json();
+  const attachmentIds = await response.json();
+
+  if (!Array.isArray(attachmentIds)) {
+    throw new Error(
+      "Réponse inattendue du serveur lors du téléversement."
+    );
+  }
+
+  return attachmentIds;
 
 }
 
