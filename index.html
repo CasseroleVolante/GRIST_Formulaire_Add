@@ -219,23 +219,28 @@ function validPV(pv) {
 }
 /* BLOC 8 BIS : GESTION DES COLONNES PIECES JOINTES */
 
-// Génère le nom de la colonne de pièces jointes
 function getPJColumn(pv) {
   return "PJ_" + pv.replace(/-/g, "_");
 }
 
-// Vérifie et crée la colonne de pièces jointes
 async function ensurePJColumn(pv) {
 
+  const pjColumn = getPJColumn(pv);
+  const pvColumn = pvColumnMap[pv];
+
+  if (!pvColumn) {
+    throw new Error("Colonne PV introuvable : " + pv);
+  }
+
+  // Vérification des colonnes existantes
   const columns = await getColumns();
 
-  const pjColumn = getPJColumn(pv);
-
+  // Création uniquement si nécessaire
   if (!columns.includes(pjColumn)) {
 
     await grist.docApi.applyUserActions([
       [
-        "AddColumn",
+        "AddVisibleColumn",
         TABLE,
         pjColumn,
         {
@@ -248,7 +253,6 @@ async function ensurePJColumn(pv) {
   }
 
 }
-
 	/* BLOC 8 TER : EXTRACTION DES VALEURS DES COLONNES GRIST */
 function getColumnValues(table, columnName) {
   return table[columnName] || [];
@@ -736,6 +740,40 @@ if (typeof grist === "undefined") {
   showStatus("Connexion à Grist en cours...");
   // Chargement des colonnes PV
   loadPVs();
+
+}
+
+	/* DIAGNOSTIC DES VUES GRIST */
+
+async function diagnosticGristViews() {
+
+  const sections = await grist.docApi.fetchTable(
+    "_grist_Views_section"
+  );
+
+  const fields = await grist.docApi.fetchTable(
+    "_grist_Views_section_field"
+  );
+
+  console.log("SECTIONS GRIST :", sections);
+  console.log("CHAMPS DES VUES :", fields);
+
+  console.table(
+    sections.id.map((id, i) => ({
+      id: id,
+      tableRef: sections.tableRef[i],
+      parentKey: sections.parentKey[i]
+    }))
+  );
+
+  console.table(
+    fields.id.map((id, i) => ({
+      id: id,
+      parentId: fields.parentId[i],
+      colRef: fields.colRef[i],
+      parentPos: fields.parentPos[i]
+    }))
+  );
 
 }
 </script>
