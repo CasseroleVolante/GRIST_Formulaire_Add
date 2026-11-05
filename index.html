@@ -164,7 +164,20 @@ Envoyer ma réponse
 
 //  Affichage des confirmations et des erreurs  
 <div id="status" class="status"></div>
+<hr>
 
+<h3>Diagnostic des vues Grist</h3>
+
+<button type="button" id="diagnosticBtn">
+  Lancer le diagnostic
+</button>
+
+<textarea
+  id="diagnosticResult"
+  rows="12"
+  readonly
+  placeholder="Les résultats du diagnostic apparaîtront ici..."
+></textarea>
 </form>
 </div>
 
@@ -773,6 +786,78 @@ async function diagnosticGristViews() {
 setTimeout(() => {
   diagnosticGristViews();
 }, 3000);
+
+	/* BLOC TEMPORAIRE : DIAGNOSTIC DES VUES GRIST */
+
+document.getElementById("diagnosticBtn").onclick = async () => {
+
+  const button = document.getElementById("diagnosticBtn");
+  const output = document.getElementById("diagnosticResult");
+
+  button.disabled = true;
+  output.value = "Analyse des vues Grist en cours...";
+
+  try {
+
+    // Récupération des sections
+    const sections = await grist.docApi.fetchTable(
+      "_grist_Views_section"
+    );
+
+    // Récupération des champs des vues
+    const fields = await grist.docApi.fetchTable(
+      "_grist_Views_section_field"
+    );
+
+    // Récupération des colonnes de la table
+    const columns = await getPVColumns();
+
+    // Préparation des résultats
+    const result = {
+      table: TABLE,
+
+      sections: {
+        id: sections.id,
+        tableRef: sections.tableRef,
+        parentKey: sections.parentKey
+      },
+
+      fields: {
+        id: fields.id,
+        parentId: fields.parentId,
+        colRef: fields.colRef,
+        parentPos: fields.parentPos
+      },
+
+      columns: columns
+    };
+
+    output.value = JSON.stringify(
+      result,
+      null,
+      2
+    );
+
+    showStatus("Diagnostic terminé.");
+
+  } catch (error) {
+
+    output.value =
+      "Erreur diagnostic : " + error.message;
+
+    showStatus(
+      "Erreur pendant le diagnostic.",
+      true
+    );
+
+  } finally {
+
+    button.disabled = false;
+
+  }
+
+};
+	
 /* BLOC 14 : INITIALISATION DU WIDGET GRIST */
 
 if (typeof grist === "undefined") {
