@@ -249,58 +249,49 @@ async function ensurePJColumn(pv) {
 
 }
 
-/* BLOC 9 : RECUPERATION DES COLONNES GRIST */
+/* BLOC 9 : RECUPERATION DES COLONNES ET LIBELLES GRIST */
 
-// Fonction de conversion des données Grist
-function getColumnValues(data, columnName) {
+async function getPVColumns() {
 
-  // Format tableau d'enregistrements
-  if (Array.isArray(data)) {
-    return data.map(row => row[columnName]);
-  }
-
-  // Format objet contenant des tableaux
-  if (data && Array.isArray(data[columnName])) {
-    return data[columnName];
-  }
-
-  throw new Error(
-    "Format Grist inattendu pour la colonne " + columnName
+  const tables = await grist.docApi.fetchTable(
+    "_grist_Tables"
   );
-}
 
-// Récupération des colonnes, même si la table est vide
-async function getColumns() {
+  const tableIds = getColumnValues(tables, "tableId");
+  const tableRowIds = getColumnValues(tables, "id");
 
-  // Lecture des tables techniques
-  const tablesData = await grist.docApi.fetchTable("_grist_Tables");
+  const index = tableIds.indexOf(TABLE);
 
-  const tableIds = getColumnValues(tablesData, "tableId");
-  const tableRowIds = getColumnValues(tablesData, "id");
-
-  // Recherche de la table principale sans utiliser find()
-  const tableIndex = tableIds.indexOf(TABLE);
-
-  if (tableIndex === -1) {
+  if (index === -1) {
     throw new Error("Table introuvable : " + TABLE);
   }
 
-  const tableInternalId = tableRowIds[tableIndex];
+  const internalId = tableRowIds[index];
 
-  // Lecture des colonnes techniques
-  const columnsData = await grist.docApi.fetchTable(
+  const columns = await grist.docApi.fetchTable(
     "_grist_Tables_column"
   );
 
-  const parentIds = getColumnValues(columnsData, "parentId");
-  const columnIds = getColumnValues(columnsData, "colId");
+  const parentIds = getColumnValues(columns, "parentId");
+  const colIds = getColumnValues(columns, "colId");
+  const labels = getColumnValues(columns, "label");
 
-  // Retour des identifiants des colonnes de notre table
-  return columnIds.filter((colId, index) => {
-    return parentIds[index] === tableInternalId &&
-           colId !== "id";
+  const result = [];
+
+  colIds.forEach((colId, i) => {
+
+    if (parentIds[i] === internalId && colId !== "id") {
+
+      result.push({
+        id: colId,
+        label: labels[i]
+      });
+
+    }
+
   });
 
+  return result;
 }
 
 
@@ -310,17 +301,27 @@ async function loadPVs() {
 
   try {
 
-    const columns = await getColumns();
+    const columns = await getPVColumns();
 
-    pvColumns = columns
-      .filter(validPV)
-      .sort((a, b) =>
-        a.localeCompare(b, "fr", {
-          numeric: true
-        })
-      );
+    // Recherche des PV grâce à leur libellé
+    const pvList = columns.filter(col =>
+      validPV(col.label)
+    );
 
-    // Affichage des PV
+    // Correspondance nom PV / identifiant Grist
+    pvColumnMap = {};
+
+    pvList.forEach(col => {
+      pvColumnMap[col.label] = col.id;
+    });
+
+    // Liste des PV disponibles
+    pvColumns = pvList.map(col => col.label).sort(
+      (a, b) => a.localeCompare(b, "fr", {
+        numeric: true
+      })
+    );
+
     renderPVs();
 
   } catch (error) {
@@ -333,7 +334,6 @@ async function loadPVs() {
   }
 
 }
-
 
 // BLOC 11 : CREATION DES CASES A COCHER 
 
