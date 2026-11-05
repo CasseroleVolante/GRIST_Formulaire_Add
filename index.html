@@ -294,6 +294,11 @@ async function getPVColumns() {
   return result;
 }
 
+	// Récupération des identifiants techniques des colonnes Grist
+async function getColumns() {
+const columns = await getPVColumns();
+return columns.map(col => col.id);
+}
 
 /* BLOC 10 : CHARGEMENT DES PV EXISTANTS */
 
