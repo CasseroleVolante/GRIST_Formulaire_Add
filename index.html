@@ -266,9 +266,9 @@ function getColumnValues(table, columnName) {
 
 	/* BLOC 8 TER : ORGANISATION AUTOMATIQUE DES COLONNES PV / PJ */
 
+
 async function organizePVAttachmentFields() {
 
-  // Identification de la table
   const tables = await grist.docApi.fetchTable(
     "_grist_Tables"
   );
@@ -283,7 +283,6 @@ async function organizePVAttachmentFields() {
   const primaryViewId = tables.primaryViewId[tableIndex];
   const cardSectionId = tables.recordCardViewSectionRef[tableIndex];
 
-  // Identification de la section principale
   const sections = await grist.docApi.fetchTable(
     "_grist_Views_section"
   );
@@ -291,17 +290,14 @@ async function organizePVAttachmentFields() {
   let mainSectionId = null;
 
   sections.id.forEach((id, i) => {
-
     if (
       sections.parentId[i] === primaryViewId &&
       sections.parentKey[i] === "record"
     ) {
       mainSectionId = id;
     }
-
   });
 
-  // Récupération des identifiants techniques
   const columns = await grist.docApi.fetchTable(
     "_grist_Tables_column"
   );
@@ -309,14 +305,11 @@ async function organizePVAttachmentFields() {
   const colIdMap = new Map();
 
   columns.id.forEach((id, i) => {
-
     if (columns.parentId[i] === tableInternalId) {
       colIdMap.set(id, columns.colId[i]);
     }
-
   });
 
-  // Sections à organiser
   const sectionIds = [
     mainSectionId,
     cardSectionId
@@ -324,14 +317,12 @@ async function organizePVAttachmentFields() {
     id && array.indexOf(id) === index
   );
 
-  // Organisation de chaque section
   for (const sectionId of sectionIds) {
 
     const fields = await grist.docApi.fetchTable(
       "_grist_Views_section_field"
     );
 
-    // Champs de la section concernée
     const currentFields = fields.id
       .map((id, i) => {
 
@@ -340,8 +331,7 @@ async function organizePVAttachmentFields() {
         }
 
         return {
-          id: id,
-          colRef: fields.colRef[i],
+          id,
           colId: colIdMap.get(fields.colRef[i]),
           parentPos: fields.parentPos[i]
         };
@@ -358,38 +348,55 @@ async function organizePVAttachmentFields() {
       fieldByColumn.set(field.colId, field);
     });
 
-    // Construction de l'ordre souhaité
+    // Séparer les PV des autres champs
+    const pvFields = currentFields.filter(field =>
+      /^PV_[A-Za-z0-9_-]+$/.test(field.colId || "")
+    );
+
+    // Trier les PV par numéro naturel
+    pvFields.sort((a, b) => {
+
+      const nameA = a.colId.replace(/^PV_/, "");
+      const nameB = b.colId.replace(/^PV_/, "");
+
+      return nameA.localeCompare(
+        nameB,
+        "fr",
+        { numeric: true, sensitivity: "base" }
+      );
+
+    });
+
+    // Construire le nouvel ordre
     const desiredFields = [];
+    const added = new Set();
 
-    for (const field of currentFields) {
+    for (const pvField of pvFields) {
 
-      const colId = field.colId;
+      desiredFields.push(pvField);
+      added.add(pvField.id);
 
-      // Une PJ déjà associée à un PV sera déplacée
-      // immédiatement après son PV
-      if (
-        /^PJ_PV_[A-Za-z0-9_]+$/.test(colId) &&
-        fieldByColumn.has(colId.replace(/^PJ_/, ""))
-      ) {
-        continue;
-      }
+      const pjField = fieldByColumn.get(
+        "PJ_" + pvField.colId
+      );
 
-      desiredFields.push(field);
-
-      // Ajout de la PJ juste après son PV
-      if (/^PV_[A-Za-z0-9_]+$/.test(colId)) {
-
-        const pjField = fieldByColumn.get("PJ_" + colId);
-
-        if (pjField) {
-          desiredFields.push(pjField);
-        }
-
+      if (pjField) {
+        desiredFields.push(pjField);
+        added.add(pjField.id);
       }
 
     }
 
-    // Déplacement des champs sans modifier les autres vues
+    // Conserver les autres champs dans leur ordre initial
+    currentFields.forEach(field => {
+
+      if (!added.has(field.id)) {
+        desiredFields.push(field);
+      }
+
+    });
+
+    // Appliquer le nouvel ordre
     for (let i = 0; i < desiredFields.length; i++) {
 
       const refreshed = await grist.docApi.fetchTable(
@@ -404,7 +411,7 @@ async function organizePVAttachmentFields() {
           }
 
           return {
-            id: id,
+            id,
             parentPos: refreshed.parentPos[j]
           };
 
@@ -446,6 +453,7 @@ async function organizePVAttachmentFields() {
   }
 
 }
+
 	
 /* BLOC 9 : RECUPERATION DES COLONNES ET LIBELLES GRIST */
 
