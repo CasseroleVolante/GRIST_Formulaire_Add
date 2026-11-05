@@ -249,6 +249,11 @@ async function ensurePJColumn(pv) {
 
 }
 
+	/* BLOC 8 TER : EXTRACTION DES VALEURS DES COLONNES GRIST */
+function getColumnValues(table, columnName) {
+  return table[columnName] || [];
+}
+	
 /* BLOC 9 : RECUPERATION DES COLONNES ET LIBELLES GRIST */
 
 async function getPVColumns() {
