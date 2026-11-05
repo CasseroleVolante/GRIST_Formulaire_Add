@@ -338,120 +338,86 @@ async function loadPVs() {
 // BLOC 11 : CREATION DES CASES A COCHER 
 
 // Construit automatiquement l'interface des PV
+/* BLOC 11 : AFFICHAGE DES PV ET DES PIECES JOINTES */
+
 function renderPVs() {
 
   const list = document.getElementById("pvList");
-
-  // Vide l'affichage précédent
   list.replaceChildren();
 
-  // Message si aucun PV n'est disponible
   if (!pvColumns.length) {
-
-    list.textContent =
-      "Aucun PV détecté. Tu peux en ajouter un ci-dessous.";
-
+    list.textContent = "Aucun PV disponible.";
+    return;
   }
 
-  // Parcours de chaque colonne PV
   pvColumns.forEach(pv => {
 
-    // Création du bloc graphique
     const div = document.createElement("div");
     div.className = "pv";
 
-    // Création du libellé
-    const label = document.createElement("label");
-
-    // Création de la case à cocher
+    // Case à cocher
     const checkbox = document.createElement("input");
-
     checkbox.type = "checkbox";
     checkbox.style.width = "auto";
-
-    // Restaure l'état de sélection
     checkbox.checked = selectedPVs.has(pv);
 
+    const label = document.createElement("label");
     label.append(
       checkbox,
       document.createTextNode(" " + pv)
     );
 
-    // Création du champ de réponse
+    // Réponse
     const textarea = document.createElement("textarea");
-
     textarea.placeholder = "Saisir votre réponse...";
     textarea.hidden = !checkbox.checked;
     textarea.dataset.pv = pv;
 
-    // Affiche ou masque la réponse selon la sélection
+    // Zone pièces jointes
+    const attachmentZone = document.createElement("div");
+    attachmentZone.className = "attachment-zone";
+    attachmentZone.hidden = !checkbox.checked;
+
+    const attachmentLabel = document.createElement("label");
+    attachmentLabel.textContent =
+      "Pièces jointes pour " + pv;
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.multiple = true;
+    fileInput.dataset.pv = pv;
+
+    const info = document.createElement("p");
+    info.className = "attachment-info";
+    info.textContent =
+      "Sélectionner un ou plusieurs fichiers.";
+
+    attachmentZone.append(
+      attachmentLabel,
+      fileInput,
+      info
+    );
+
+    // Gestion de la sélection
     checkbox.addEventListener("change", () => {
 
       if (checkbox.checked) {
-
         selectedPVs.add(pv);
-
       } else {
-
         selectedPVs.delete(pv);
-
       }
 
       textarea.hidden = !checkbox.checked;
+      attachmentZone.hidden = !checkbox.checked;
 
     });
 
-    // Ajout des éléments dans le formulaire
-    /* BLOC 11 BIS : CHAMP DE DEPOT DES PIECES JOINTES */
+    div.append(
+      label,
+      textarea,
+      attachmentZone
+    );
 
-// Création de la zone de dépôt
-const attachmentZone = document.createElement("div");
-
-attachmentZone.className = "attachment-zone";
-attachmentZone.hidden = !checkbox.checked;
-
-// Libellé
-const attachmentLabel = document.createElement("label");
-
-attachmentLabel.textContent =
-  "Pièces jointes pour " + pv;
-
-// Champ de sélection des fichiers
-const attachmentInput = document.createElement("input");
-
-attachmentInput.type = "file";
-attachmentInput.multiple = true;
-
-attachmentInput.dataset.pv = pv;
-
-// Informations complémentaires
-const attachmentInfo = document.createElement("div");
-
-attachmentInfo.className = "attachment-info";
-
-attachmentInfo.textContent =
-  "Vous pouvez sélectionner plusieurs fichiers.";
-
-// Assemblage de la zone
-attachmentZone.append(
-  attachmentLabel,
-  attachmentInput,
-  attachmentInfo
-);
-
-// Affichage ou masquage de la zone selon la sélection
-checkbox.addEventListener("change", () => {
-
-  attachmentZone.hidden = !checkbox.checked;
-
-});
-
-// Ajout dans le bloc PV
-div.append(
-  label,
-  textarea,
-  attachmentZone
-);
     list.appendChild(div);
 
   });
@@ -516,7 +482,10 @@ if (!tables.includes(TABLE)) {
 
     // Récupération du véritable identifiant technique créé par Grist
 const createdColumn = result.retValues[0].colId;
-
+	  
+// Conserver le nom affiché et l'identifiant technique
+pvColumnMap[pv] = createdColumn;
+	  
 // Vérification de la création
 const updatedColumns = await getColumns();
 
