@@ -239,16 +239,9 @@ function getPJColumn(pv) {
 async function ensurePJColumn(pv) {
 
   const pjColumn = getPJColumn(pv);
-  const pvColumn = pvColumnMap[pv];
 
-  if (!pvColumn) {
-    throw new Error("Colonne PV introuvable : " + pv);
-  }
-
-  // Vérification des colonnes existantes
   const columns = await getColumns();
 
-  // Création uniquement si nécessaire
   if (!columns.includes(pjColumn)) {
 
     await grist.docApi.applyUserActions([
@@ -269,6 +262,189 @@ async function ensurePJColumn(pv) {
 	/* BLOC 8 TER : EXTRACTION DES VALEURS DES COLONNES GRIST */
 function getColumnValues(table, columnName) {
   return table[columnName] || [];
+}
+
+	/* BLOC 8 TER : ORGANISATION AUTOMATIQUE DES COLONNES PV / PJ */
+
+async function organizePVAttachmentFields() {
+
+  // Identification de la table
+  const tables = await grist.docApi.fetchTable(
+    "_grist_Tables"
+  );
+
+  const tableIndex = tables.tableId.indexOf(TABLE);
+
+  if (tableIndex === -1) {
+    throw new Error("Table Grist introuvable.");
+  }
+
+  const tableInternalId = tables.id[tableIndex];
+  const primaryViewId = tables.primaryViewId[tableIndex];
+  const cardSectionId = tables.recordCardViewSectionRef[tableIndex];
+
+  // Identification de la section principale
+  const sections = await grist.docApi.fetchTable(
+    "_grist_Views_section"
+  );
+
+  let mainSectionId = null;
+
+  sections.id.forEach((id, i) => {
+
+    if (
+      sections.parentId[i] === primaryViewId &&
+      sections.parentKey[i] === "record"
+    ) {
+      mainSectionId = id;
+    }
+
+  });
+
+  // Récupération des identifiants techniques
+  const columns = await grist.docApi.fetchTable(
+    "_grist_Tables_column"
+  );
+
+  const colIdMap = new Map();
+
+  columns.id.forEach((id, i) => {
+
+    if (columns.parentId[i] === tableInternalId) {
+      colIdMap.set(id, columns.colId[i]);
+    }
+
+  });
+
+  // Sections à organiser
+  const sectionIds = [
+    mainSectionId,
+    cardSectionId
+  ].filter((id, index, array) =>
+    id && array.indexOf(id) === index
+  );
+
+  // Organisation de chaque section
+  for (const sectionId of sectionIds) {
+
+    const fields = await grist.docApi.fetchTable(
+      "_grist_Views_section_field"
+    );
+
+    // Champs de la section concernée
+    const currentFields = fields.id
+      .map((id, i) => {
+
+        if (fields.parentId[i] !== sectionId) {
+          return null;
+        }
+
+        return {
+          id: id,
+          colRef: fields.colRef[i],
+          colId: colIdMap.get(fields.colRef[i]),
+          parentPos: fields.parentPos[i]
+        };
+
+      })
+      .filter(Boolean)
+      .sort((a, b) =>
+        Number(a.parentPos) - Number(b.parentPos)
+      );
+
+    const fieldByColumn = new Map();
+
+    currentFields.forEach(field => {
+      fieldByColumn.set(field.colId, field);
+    });
+
+    // Construction de l'ordre souhaité
+    const desiredFields = [];
+
+    for (const field of currentFields) {
+
+      const colId = field.colId;
+
+      // Une PJ déjà associée à un PV sera déplacée
+      // immédiatement après son PV
+      if (
+        /^PJ_PV_[A-Za-z0-9_]+$/.test(colId) &&
+        fieldByColumn.has(colId.replace(/^PJ_/, ""))
+      ) {
+        continue;
+      }
+
+      desiredFields.push(field);
+
+      // Ajout de la PJ juste après son PV
+      if (/^PV_[A-Za-z0-9_]+$/.test(colId)) {
+
+        const pjField = fieldByColumn.get("PJ_" + colId);
+
+        if (pjField) {
+          desiredFields.push(pjField);
+        }
+
+      }
+
+    }
+
+    // Déplacement des champs sans modifier les autres vues
+    for (let i = 0; i < desiredFields.length; i++) {
+
+      const refreshed = await grist.docApi.fetchTable(
+        "_grist_Views_section_field"
+      );
+
+      const ordered = refreshed.id
+        .map((id, j) => {
+
+          if (refreshed.parentId[j] !== sectionId) {
+            return null;
+          }
+
+          return {
+            id: id,
+            parentPos: refreshed.parentPos[j]
+          };
+
+        })
+        .filter(Boolean)
+        .sort((a, b) =>
+          Number(a.parentPos) - Number(b.parentPos)
+        );
+
+      const wantedId = desiredFields[i].id;
+
+      if (ordered[i]?.id === wantedId) {
+        continue;
+      }
+
+      const movingField = ordered.find(
+        field => field.id === wantedId
+      );
+
+      const targetField = ordered[i];
+
+      if (!movingField || !targetField) {
+        continue;
+      }
+
+      await grist.docApi.applyUserActions([
+        [
+          "UpdateRecord",
+          "_grist_Views_section_field",
+          movingField.id,
+          {
+            parentPos: targetField.parentPos
+          }
+        ]
+      ]);
+
+    }
+
+  }
+
 }
 	
 /* BLOC 9 : RECUPERATION DES COLONNES ET LIBELLES GRIST */
@@ -350,6 +526,15 @@ async function loadPVs() {
     );
 
     renderPVs();
+	  // Création automatique des colonnes PJ manquantes
+for (const pv of pvColumns) {
+
+  await ensurePJColumn(pv);
+
+}
+
+// Organisation des colonnes dans les vues
+await organizePVAttachmentFields();
 
   } catch (error) {
 
@@ -507,7 +692,7 @@ document.getElementById("addPv").onclick = async () => {
 
     await grist.docApi.applyUserActions([
       [
-        "AddColumn",
+        "AddVisibleColumn",
         TABLE,
         columnId,
         {
