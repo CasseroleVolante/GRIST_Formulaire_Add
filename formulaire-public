@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Consultation Cadre PV</title>
+
+<style>
+:root {
+  --blue: #245b87;
+  --blue-dark: #19476c;
+  --background: #f3f5f8;
+  --text: #263445;
+  --border: #dce3ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  margin: 0;
+  padding: 25px 15px;
+}
+
+.container {
+  max-width: 760px;
+  margin: auto;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 15px rgba(0,0,0,.06);
+}
+
+.header {
+  background: var(--blue);
+  color: white;
+  padding: 25px 30px;
+}
+
+.header h1 {
+  font-size: 25px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.content {
+  padding: 28px;
+}
+
+.intro,
+.info-text {
+  background: #f1f6fa;
+  border-left: 4px solid var(--blue);
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+section {
+  margin-bottom: 28px;
+}
+
+h2 {
+  color: var(--blue);
+  font-size: 19px;
+  margin-bottom: 17px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+input:not([type="checkbox"]):not([type="file"]),
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccd4dd;
+  border-radius: 6px;
+  font: inherit;
+  margin-bottom: 17px;
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid #b5d4eb;
+  border-color: var(--blue);
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 25px 0;
+}
+
+.pv {
+  background: #f5f8fb;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 17px;
+  margin-bottom: 13px;
+}
+
+.pv-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pv-title label {
+  margin: 0;
+  color: var(--blue);
+}
+
+.pv-title input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+
+.attachment-zone {
+  background: white;
+  border: 1px dashed #8da9bf;
+  padding: 13px;
+  border-radius: 7px;
+  margin-top: 12px;
+}
+
+.attachment-zone input {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.attachment-info {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 0;
+}
+
+button {
+  background: var(--blue);
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--blue-dark);
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.add-pv-zone {
+  background: #f5f8fb;
+  border: 1px solid var(--border);
+  padding: 18px;
+  border-radius: 8px;
+}
+
+.add-pv-zone input {
+  margin-bottom: 10px;
+}
+
+.footer-text {
+  background: #f1f6fa;
+  border-radius: 7px;
+  padding: 18px;
+  line-height: 1.6;
+  margin-top: 25px;
+}
+
+.footer-text a {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.status {
+  padding: 12px;
+  margin-top: 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  display: none;
+}
+
+.status.success {
+  display: block;
+  background: #e9f6ed;
+  color: #247a45;
+}
+
+.status.error {
+  display: block;
+  background: #fcebea;
+  color: #c0392b;
+}
+
+.small-note {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media(max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+
+  .content {
+    padding: 19px;
+  }
+
+  .header {
+    padding: 22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <header class="header">
+    <h1>Consultation Cadre PV</h1>
+  </header>
+
+  <main class="content">
+
+    <!-- TEXTE APRES LE TITRE -->
+    <div class="intro">
+      Texte temporaire à modifier.
+    </div>
+
+    <form id="form">
+
+      <!-- IDENTIFICATION -->
+      <section>
+
+        <h2>Identification du répondant</h2>
+
+        <label for="nom">Nom</label>
+        <input id="nom" name="nom" required>
+
+        <label for="prenom">Prénom</label>
+        <input id="prenom" name="prenom" required>
+
+        <label for="structure">Structure</label>
+        <input id="structure" name="structure" required>
+
+        <label for="mail">Adresse e-mail</label>
+        <input id="mail" name="mail" type="email" required>
+
+      </section>
+
+      <hr class="divider">
+
+      <!-- TEXTE APRES IDENTIFICATION -->
+      <div class="info-text">
+        Texte temporaire à modifier.
+      </div>
+
+      <!-- PV DISPONIBLES -->
+      <section>
+
+        <h2>PV disponibles</h2>
+
+        <p class="small-note">
+          Sélectionnez les PV pour lesquels vous souhaitez apporter
+          une réponse. Une zone de saisie et un espace de dépôt
+          de documents apparaîtront pour chaque sélection.
+        </p>
+
+        <div id="pvList">
+          Chargement des PV...
+        </div>
+
+      </section>
+
+      <hr class="divider">
+
+      <!-- AJOUT NOUVEAU PV -->
+      <section>
+
+        <h2>Ajouter un nouveau PV</h2>
+
+        <div class="add-pv-zone">
+
+          <p class="small-note">
+            Texte temporaire à modifier.
+          </p>
+
+          <label for="newPv">Identifiant du nouveau PV</label>
+
+          <input
+            id="newPv"
+            placeholder="Exemple : PV-12"
+          >
+
+          <button type="button" id="addPv">
+            + Ajouter un PV
+          </button>
+
+        </div>
+
+      </section>
+
+      <hr class="divider">
+
+      <!-- TEXTE FINAL ET CONTACT -->
+      <div class="footer-text">
+        <p>Texte temporaire à modifier.</p>
+
+        <p>
+          Pour toute question, vous pouvez nous contacter :
+          <a href="mailto:contact@exemple.fr">
+            contact@exemple.fr
+          </a>
+        </p>
+      </div>
+
+      <!-- VALIDATION -->
+      <button
+        type="submit"
+        id="submit"
+        style="width:100%; margin-top:25px;"
+      >
+        Envoyer ma réponse
+      </button>
+
+      <div id="status" class="status"></div>
+
+    </form>
+
+  </main>
+</div>
+
+<script>
+
+// ==========================================
+// CONFIGURATION
+// ==========================================
+
+// Adresse du futur service sécurisé.
+// A renseigner lorsque celui-ci sera installé.
+const API_BASE = "A_CONFIGURER";
+
+// ==========================================
+// VARIABLES
+// ==========================================
+
+let pvColumns = [];
+let selectedPVs = new Set();
+
+const pvList = document.getElementById("pvList");
+const status = document.getElementById("status");
+
+// ==========================================
+// MESSAGES
+// ==========================================
+
+function showStatus(message, error = false) {
+
+  status.textContent = message;
+
+  status.className = error
+    ? "status error"
+    : "status success";
+
+}
+
+function hideStatus() {
+  status.className = "status";
+  status.textContent = "";
+}
+
+// ==========================================
+// VERIFICATION DU FORMAT PV
+// ==========================================
+
+function validPV(pv) {
+  return /^PV-[A-Za-z0-9_-]+$/.test(pv);
+}
+
+// ==========================================
+// COMMUNICATION AVEC LE SERVICE
+// ==========================================
+
+async function apiRequest(path, options = {}) {
+
+  if (API_BASE === "A_CONFIGURER") {
+    throw new Error(
+      "Le service sécurisé n'est pas encore configuré."
+    );
+  }
+
+  const response = await fetch(
+    API_BASE + path,
+    options
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Erreur du service : " + response.status
+    );
+  }
+
+  return response.json();
+}
+
+// ==========================================
+// CHARGEMENT DES PV
+// ==========================================
+
+async function loadPVs() {
+
+  try {
+
+    const data = await apiRequest("/api/pvs");
+
+    pvColumns = data.pvs || [];
+
+    renderPVs();
+
+  } catch (error) {
+
+    pvList.textContent =
+      "Chargement impossible : " + error.message;
+
+  }
+
+}
+
+// ==========================================
+// AFFICHAGE DES PV
+// ==========================================
+
+function renderPVs() {
+
+  pvList.replaceChildren();
+
+  if (!pvColumns.length) {
+
+    pvList.textContent = "Aucun PV disponible.";
+
+    return;
+
+  }
+
+  pvColumns.forEach(item => {
+
+    const pv = item.label;
+
+    const div = document.createElement("div");
+    div.className = "pv";
+
+    const title = document.createElement("div");
+    title.className = "pv-title";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selectedPVs.has(pv);
+
+    const label = document.createElement("label");
+    label.textContent = pv;
+
+    title.append(checkbox, label);
+
+    const textarea = document.createElement("textarea");
+    textarea.placeholder = "Saisir votre réponse...";
+    textarea.hidden = !checkbox.checked;
+    textarea.dataset.pv = pv;
+
+    const attachment = document.createElement("div");
+    attachment.className = "attachment-zone";
+    attachment.hidden = !checkbox.checked;
+
+    const attachmentLabel = document.createElement("label");
+    attachmentLabel.textContent =
+      "Pièces jointes pour " + pv;
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.multiple = true;
+
+    const info = document.createElement("p");
+    info.className = "attachment-info";
+    info.textContent =
+      "Sélectionner un ou plusieurs fichiers.";
+
+    attachment.append(
+      attachmentLabel,
+      fileInput,
+      info
+    );
+
+    checkbox.addEventListener("change", () => {
+
+      if (checkbox.checked) {
+        selectedPVs.add(pv);
+      } else {
+        selectedPVs.delete(pv);
+      }
+
+      textarea.hidden = !checkbox.checked;
+      attachment.hidden = !checkbox.checked;
+
+    });
+
+    div.append(
+      title,
+      textarea,
+      attachment
+    );
+
+    pvList.appendChild(div);
+
+  });
+
+}
+
+// ==========================================
+// AJOUT D'UN NOUVEAU PV
+// ==========================================
+
+document.getElementById("addPv").onclick = async () => {
+
+  const input = document.getElementById("newPv");
+  const button = document.getElementById("addPv");
+
+  const pv = input.value.trim();
+
+  hideStatus();
+
+  if (!validPV(pv)) {
+
+    showStatus(
+      "Format incorrect. Exemple : PV-12.",
+      true
+    );
+
+    return;
+
+  }
+
+  button.disabled = true;
+
+  try {
+
+    showStatus("Création du PV en cours...");
+
+    await apiRequest("/api/pvs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pv })
+    });
+
+    selectedPVs.add(pv);
+
+    await loadPVs();
+
+    input.value = "";
+
+    showStatus(
+      "Le PV " + pv + " a été ajouté."
+    );
+
+  } catch (error) {
+
+    showStatus(
+      "Erreur lors de l'ajout : " + error.message,
+      true
+    );
+
+  } finally {
+
+    button.disabled = false;
+
+  }
+
+};
+
+// ==========================================
+// ENREGISTREMENT DU FORMULAIRE
+// ==========================================
+
+document.getElementById("form").onsubmit =
+async event => {
+
+  event.preventDefault();
+
+  hideStatus();
+
+  if (!selectedPVs.size) {
+
+    showStatus(
+      "Sélectionnez au moins un PV.",
+      true
+    );
+
+    return;
+
+  }
+
+  const button = document.getElementById("submit");
+
+  button.disabled = true;
+
+  try {
+
+    const metadata = {
+
+      nom: document.getElementById("nom").value.trim(),
+
+      prenom: document.getElementById("prenom").value.trim(),
+
+      structure: document.getElementById("structure").value.trim(),
+
+      mail: document.getElementById("mail").value.trim(),
+
+      responses: {},
+
+      selectedPVs: Array.from(selectedPVs)
+
+    };
+
+    const formData = new FormData();
+
+    document.querySelectorAll("#pvList .pv").forEach(div => {
+
+      const checkbox = div.querySelector(
+        'input[type="checkbox"]'
+      );
+
+      if (!checkbox.checked) return;
+
+      const textarea = div.querySelector("textarea");
+      const fileInput = div.querySelector(
+        'input[type="file"]'
+      );
+
+      const pv = textarea.dataset.pv;
+
+      metadata.responses[pv] = textarea.value;
+
+      Array.from(fileInput.files).forEach(file => {
+
+        formData.append(
+          "attachments[" + pv + "]",
+          file
+        );
+
+      });
+
+    });
+
+    formData.append(
+      "metadata",
+      JSON.stringify(metadata)
+    );
+
+    showStatus("Enregistrement en cours...");
+
+    await apiRequest("/api/submissions", {
+      method: "POST",
+      body: formData
+    });
+
+    event.target.reset();
+
+    selectedPVs.clear();
+
+    renderPVs();
+
+    showStatus(
+      "Votre réponse a bien été enregistrée !"
+    );
+
+  } catch (error) {
+
+    showStatus(
+      "Erreur lors de l'enregistrement : " +
+      error.message,
+      true
+    );
+
+  } finally {
+
+    button.disabled = false;
+
+  }
+
+};
+
+// ==========================================
+// INITIALISATION
+// ==========================================
+
+loadPVs();
+
+</script>
+
+</body>
+</html>
